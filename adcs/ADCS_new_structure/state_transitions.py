@@ -19,8 +19,7 @@ def check_trans_bdot(data : tp.adcs_data_t, trans_criteria : tp.trans_criteria_t
 	# TODO: is there significance for bit operator "&" over here
 
 	dBdt_mag = np.linalg.norm(np.array(data.bdot_est))
-	print("dBdt_mag: ")
-	print(dBdt_mag)
+	print("check dBdt_mag: ", dBdt_mag)
 
 	if(tp.CHECK_MIN_BDOT_TRANS_CRIT ) : # check minimum B-Dot magnitude
 		tmp1 = True
@@ -55,8 +54,7 @@ def check_trans_angerr(data, trans_criteria : tp.trans_criteria_t, tmp1, tmp2, t
 
 	ang_err = 360.0/pi*np.arccos( round((data.ekf_data.q[0])*(data.q_des[0]) + 
 			np.dot( (data.ekf_data.q[1:4]), (data.q_des[1:4])) , 5) ) #[deg]
-	print("(check_trans_angerr) ang_err: ")
-	print(ang_err)
+	print("(check_trans_angerr) ang_err: ", ang_err)
 	
 	if( tp.CHECK_MIN_ANG_ERR_TRANS_CRIT ): # check minimum angular error magnitude
 		tmp1 = True

@@ -101,7 +101,7 @@ class ekf_commands():
                 self.Pde[j][i] = x[7+i*6+j]
 
         # GPS collect position and velocity
-        # TODO: add gps access to here and add *1000 per need
+        # TODO: add gps access to here and add *1000 per need (don't need since self.gps_r is already in [m])
         self.position_eq = self.gps_r
         self.velocity_eq = self.gps_v
         
@@ -120,9 +120,7 @@ class ekf_commands():
 
         # calculate ang vel of body wrt ref frame in body fixed coordinate system
         self.wbrb = self.ww - self.wbrb
-        print()
-        print("(diffEQInit) - angular velocity: ")
-        print(self.wbrb)
+        print("(diffEQInit) - angular velocity: ", self.wbrb)
 
     def diffEqTorques(self, data: tp.ekf_data_t):
         # represents control torque
@@ -322,13 +320,17 @@ class ekf_commands():
     def ekf_linearization(self, data: tp.ekf_data_t):
 
         # TODO: figure out GPS
+        print("ekf_linearization")
         self.position = self.gps_r
         self.velocity = self.gps_v
 
         self.Tin2ref, ang_vel_ref = ct.T_dart(self.position, self.velocity)
         self.Tref2bf = self.quaternion2CTmatrix(data.q)
 
-        GMST = self.gstime(data.t0/86400 + data.jdsatepoch)
+        # GMST = self.gstime(data.t0/86400 + data.jdsatepoch)
+        
+        GMST = tc.jd_2_gmst(data.jdsatepoch, data.t0/86400)
+        print("ekf - GMST is", GMST, " for time ", data.t0)
 
         self.Tef = self.Tin2ef(GMST)
         temp = self.RefVef(self.Tef, self.position, self.velocity)
@@ -340,11 +342,16 @@ class ekf_commands():
 
         r = np.linalg.norm(self.position)
 
-        self.latlonr[0] = np.arccos(self.position_ef[2]/r)
+        self.latlonr[0] = np.arctan(np.divide(self.position_ef[2],
+                                              (np.sqrt(np.power(self.position_ef[0],2)
+                                                       +np.power(self.position_ef[1],2)))))
         self.latlonr[1] = np.arctan2(self.position_ef[1], self.position_ef[0])
-        self.latlonr[2] = r * 1000
-
+        self.latlonr[2] = r
+        
+        print("date in ekf is", data.jdsatepoch)
+        print("t is ", data.t0)
         self.BBf = self.mag2(self.latlonr, data.t0/(24*3600) + data.jdsatepoch, 13)
+        
 
         self.B = np.matmul(self.Tuse2ef,self.Bbf)
         self.Bbf = np.matmul(self.Tef2in,self.B)
@@ -396,11 +403,16 @@ class ekf_commands():
         self.meas_err[0:3] = data.ang_vel_meas1 - self.x[0:3]
         self.meas_err[3:6] = data.ang_vel_meas2 - self.x[0:3]
 
+        print("meas err from gyro")
+        print(self.meas_err[0:3])
+
         qnorm = np.linalg.norm(self.x[3:7])
         self.x[3:7] = (1/qnorm)*self.x[3:7]
         self.Tbf2bff = ct.quaternion2CTmatrix(self.x[3:7])
-        self.GMST = self.gstime(data.jdsatepoch + (data.t1/86400))
-        
+        # self.GMST = self.gstime(data.jdsatepoch + (data.t1/86400))
+
+        self.GMST = tc.jd_2_gmst(data.jdsatepoch, data.t1/86400)
+        print("ekf - GMST is", self.GMST, " for time", data.t0)
         self.Tef = self.Tin2ef(self.GMST)
 
         temp = self.RefVef(self.Tef, self.position, self.velocity)
@@ -417,11 +429,15 @@ class ekf_commands():
         if (self.r < self.EKF_EPSILON):
             self.r = 1
 
-        self.latlonr[0] = np.arccos(self.position_ef[2]/self.r)
+        self.latlonr[0] = np.arctan(np.divide(self.position_ef[2],
+                                              (np.sqrt(np.power(self.position_ef[0],2)
+                                                       +np.power(self.position_ef[1],2)))))
         self.latlonr[1] = np.arctan2(self.position_ef[1],self.position_ef[0])
-        self.latlonr[2] = self.r*1000
-
-        self.B = self.mag2(self.latlonr, (data.t0/86400) + data.jdsatepoch, 13)
+        self.latlonr[2] = self.r
+        print("ekf_nonlinear_propagation")
+        print("date in ekf is", data.jdsatepoch)
+        print("t is ", data.t1)
+        self.B = self.mag2(self.latlonr, (data.t1/86400) + data.jdsatepoch, 13)
 
         self.Bbf = np.matmul(self.Tuse2ef,self.B)
         self.B = np.matmul(self.Bbf,self.Tef2in)
@@ -431,6 +447,9 @@ class ekf_commands():
 
         self.meas_err[6:9] = data.mag_meas_1.data[data.mag_meas_1.iterator] - (self.Bbf/1000000000)
         self.meas_err[9:12] = data.mag_meas_2.data[data.mag_meas_2.iterator] - (self.Bbf/1000000000)
+
+        print("meas err from mag")
+        print(self.meas_err[6:9])
 
         for i in range(0,6):
             for j in range(0,6):
@@ -589,7 +608,9 @@ class ekf_commands():
         eD = eDate
         eD2 = [2019,12,31,0,0,0]
         dt = (eD - tc.ymdhms_2_jd(eD2[0], eD2[1], eD2[2], eD2[3], eD2[4], eD2[5]))/365.25
-        
+        print("ekf - R:", R)
+        print("ekf - mag2 input:", eD)
+        print("ekf - dt:", dt)
         
         gnm = Gnm + dGnmdt*dt
         hnm = Hnm + dHnmdt*dt
@@ -664,6 +685,7 @@ class ekf_commands():
                 Bph=Bph-A/(sinth)*m*(-1*g*sinmph+h*cosmph)*Pnm
         
         B = [Br, Bth, Bph]
+        print("ekf - mag2 returns:", B)
         return B
 
 

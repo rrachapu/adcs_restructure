@@ -19,7 +19,7 @@ from math import cos, sin, pi
 import matplotlib.pyplot as plt
 import numpy.linalg as la
 
-jdse = -1
+jdse = 2458752.5
 
 output_file = 1
 
@@ -282,89 +282,179 @@ def SatDE(t, X, props):
     
     return dX
 
-
 def mag2(R, eDate, order):
-    RE = 6378136.49
-    eD = eDate
-    eD2 = [2019,12,31,0,0,0]
-    dt = (tc.ymdhms_2_jd(eD[0], eD[1], eD[2], eD[3], eD[4], eD[5]) -
-          tc.ymdhms_2_jd(eD2[0], eD2[1], eD2[2], eD2[3], eD2[4], eD2[5]))/365.25
+        pi = 3.14159265359
+        RE = 6378136.49
+        eD = eDate
+        eD2 = [2019,12,31,0,0,0]
+        dt = (eD - tc.ymdhms_2_jd(eD2[0], eD2[1], eD2[2], eD2[3], eD2[4], eD2[5]))/365.25
+        print("tester - R:", R)
+        print("tester - mag2 input:", eD)
+        print("tester - dt:", dt)
+        
+        gnm = Gnm + dGnmdt*dt
+        hnm = Hnm + dHnmdt*dt
+        # dt = (date.toordinal(datetime(int(eD[0]), int(eD[1]), int(eD[2]), 
+        #                               int(eD[3]), int(eD[4]), int(eD[5]))) - 
+        #       date.toordinal(datetime(int(eD2[0]), int(eD2[1]), int(eD2[2]), 
+        #                               int(eD2[3]), int(eD2[4]), int(eD2[5]))))/365.25
+        
+        th = pi/2 - R[0] # latitude
+        ph = R[1] # longitude
+        r = R[2] # radial position
+        
+        Sn0 = 1
+        Knm = 0
+        Pnn = 1
+        Pn2 = np.zeros(14)
+        Pn1 = Pn2
+        Pn1[0] = 1
+        dPnndth = 0
+        dPn2dth = np.zeros(14) 
+        dPn1dth = dPn2dth
+        cosph = np.cos(ph)
+        sinph = np.sin(ph)
+        costh = np.cos(th)
+        sinth = np.sin(th)
+        Br = 0
+        Bth = 0
+        Bph = 0
+        for n in range(1,order + 1):
+            Sn0 = Sn0 * (2 * n - 1) / n
+            Snm = Sn0
+            A=(RE/r)**(n+2)
+            for m in range(0,n+1):
+                
+                dm1 = (m == 1)
+                
+                if (m > 0):
+                    Snm = Snm * np.sqrt((n - m + 1)*(dm1 + 1)/(n + m))
+                if (n > 1):
+                    Knm = ((n - 1)**2 - m ** 2) / ((2 * n - 1) * (2 * n - 3))
+                
+                if (m == n):
+                    dPnndth = sinth * dPnndth + costh * Pnn
+                    Pnn = sinth * Pnn
+                    dPnmdth = dPnndth
+                    Pnm = Pnn
+                else:
+                    dPnmdth = costh * dPn1dth[m] - sinth * Pn1[m] - Knm * dPn2dth[m]
+                    Pnm = costh * Pn1[m] - Knm * Pn2[m]
+                
+                dPn2dth[m] = dPn1dth[m]
+                dPn1dth[m] = dPnmdth
+                Pn2[m] = Pn1[m]
+                Pn1[m] = Pnm
+                
+                if (m == 0):
+                    cosmph = 1
+                    sinmph = 0
+                else:
+                    # use np.matmul(a,b)
+                    a = np.array([[cosmph, -1*sinmph],[sinmph, cosmph]])
+                    b = np.array([cosph, sinph])
+                    #C = [cosmph -sinmph sinmph cosmph]*[cosph sinph]'
+                    C = np.matmul(a,b)
+                    cosmph=C[0]
+                    sinmph=C[1]
+                g = Snm*gnm[n-1][m]
+                h = Snm*hnm[n-1][m]
+                
+                Br=Br+A*(n+1)*(g*cosmph+h*sinmph)*Pnm
+                Bth=Bth-A*(g*cosmph+h*sinmph)*dPnmdth
+                Bph=Bph-A/(sinth)*m*(-1*g*sinmph+h*cosmph)*Pnm
+        
+        B = [Br, Bth, Bph]
+        print("tester - mag2 returns:", B)
+        return B
+
+
+# def mag2(R, eDate, order):
+#     RE = 6378136.49
+#     eD = eDate
+#     eD2 = [2019,12,31,0,0,0]
+#     dt = (tc.ymdhms_2_jd(eD[0], eD[1], eD[2], eD[3], eD[4], eD[5]) -
+#           tc.ymdhms_2_jd(eD2[0], eD2[1], eD2[2], eD2[3], eD2[4], eD2[5]))/365.25
+#     # dt is in years
+
+#     print(tc.ymdhms_2_jd(eD[0], eD[1], eD[2], eD[3], eD[4], eD[5]))
+#     print(tc.ymdhms_2_jd(eD2[0], eD2[1], eD2[2], eD2[3], eD2[4], eD2[5]))
+#     print("dt in tester is ", dt)
     
+#     gnm = Gnm + dGnmdt*dt
+#     hnm = Hnm + dHnmdt*dt
+#     # dt = (date.toordinal(datetime(int(eD[0]), int(eD[1]), int(eD[2]), 
+#     #                               int(eD[3]), int(eD[4]), int(eD[5]))) - 
+#     #       date.toordinal(datetime(int(eD2[0]), int(eD2[1]), int(eD2[2]), 
+#     #                               int(eD2[3]), int(eD2[4]), int(eD2[5]))))/365.25
     
-    gnm = Gnm + dGnmdt*dt
-    hnm = Hnm + dHnmdt*dt
-    # dt = (date.toordinal(datetime(int(eD[0]), int(eD[1]), int(eD[2]), 
-    #                               int(eD[3]), int(eD[4]), int(eD[5]))) - 
-    #       date.toordinal(datetime(int(eD2[0]), int(eD2[1]), int(eD2[2]), 
-    #                               int(eD2[3]), int(eD2[4]), int(eD2[5]))))/365.25
+#     th = pi/2 - R[0] # latitude
+#     ph = R[1] # longitude
+#     r = R[2] # radial position
     
-    th = pi/2 - R[0] # latitude
-    ph = R[1] # longitude
-    r = R[2] # radial position
+#     Sn0 = 1
+#     Knm = 0
+#     Pnn = 1
+#     Pn2 = np.zeros(14)
+#     Pn1 = Pn2
+#     Pn1[0] = 1
+#     dPnndth = 0
+#     dPn2dth = np.zeros(14)
+#     dPn1dth = dPn2dth
+#     cosph = np.cos(ph)
+#     sinph = np.sin(ph)
+#     costh = np.cos(th)
+#     sinth = np.sin(th)
+#     Br = 0
+#     Bth = 0
+#     Bph = 0
+#     for n in range(1,order + 1):
+#         Sn0 = Sn0 * (2 * n - 1) / n
+#         Snm = Sn0
+#         A=(RE/r)**(n+2)
+#         for m in range(0,n+1):
+            
+#             dm1 = (m == 1)
+            
+#             if (m > 0):
+#                 Snm = Snm * np.sqrt((n - m + 1)*(dm1 + 1)/(n + m))
+#             if (n > 1):
+#                 Knm = ((n - 1)**2 - m ** 2) / ((2 * n - 1) * (2 * n - 3))
+            
+#             if (m == n):
+#                 dPnndth = sinth * dPnndth + costh * Pnn
+#                 Pnn = sinth * Pnn
+#                 dPnmdth = dPnndth
+#                 Pnm = Pnn
+#             else:
+#                 dPnmdth = costh * dPn1dth[m] - sinth * Pn1[m] - Knm * dPn2dth[m]
+#                 Pnm = costh * Pn1[m] - Knm * Pn2[m]
+            
+#             dPn2dth[m] = dPn1dth[m]
+#             dPn1dth[m] = dPnmdth
+#             Pn2[m] = Pn1[m]
+#             Pn1[m] = Pnm
+            
+#             if (m == 0):
+#                 cosmph = 1
+#                 sinmph = 0
+#             else:
+#                 # use np.matmul(a,b)
+#                 a = np.array([[cosmph, -1*sinmph],[sinmph, cosmph]])
+#                 b = np.array([cosph, sinph])
+#                 #C = [cosmph -sinmph sinmph cosmph]*[cosph sinph]'
+#                 C = np.matmul(a,b)
+#                 cosmph=C[0]
+#                 sinmph=C[1]
+#             g = Snm*gnm[n-1][m]
+#             h = Snm*hnm[n-1][m]
+            
+#             Br=Br+A*(n+1)*(g*cosmph+h*sinmph)*Pnm
+#             Bth=Bth-A*(g*cosmph+h*sinmph)*dPnmdth
+#             Bph=Bph-A/(sinth)*m*(-1*g*sinmph+h*cosmph)*Pnm
     
-    Sn0 = 1
-    Knm = 0
-    Pnn = 1
-    Pn2 = np.zeros(14)
-    Pn1 = Pn2
-    Pn1[0] = 1
-    dPnndth = 0
-    dPn2dth = np.zeros(14)
-    dPn1dth = dPn2dth
-    cosph = np.cos(ph)
-    sinph = np.sin(ph)
-    costh = np.cos(th)
-    sinth = np.sin(th)
-    Br = 0
-    Bth = 0
-    Bph = 0
-    for n in range(1,order + 1):
-        Sn0 = Sn0 * (2 * n - 1) / n
-        Snm = Sn0
-        A=(RE/r)**(n+2)
-        for m in range(0,n+1):
-            
-            dm1 = (m == 1)
-            
-            if (m > 0):
-                Snm = Snm * np.sqrt((n - m + 1)*(dm1 + 1)/(n + m))
-            if (n > 1):
-                Knm = ((n - 1)**2 - m ** 2) / ((2 * n - 1) * (2 * n - 3))
-            
-            if (m == n):
-                dPnndth = sinth * dPnndth + costh * Pnn
-                Pnn = sinth * Pnn
-                dPnmdth = dPnndth
-                Pnm = Pnn
-            else:
-                dPnmdth = costh * dPn1dth[m] - sinth * Pn1[m] - Knm * dPn2dth[m]
-                Pnm = costh * Pn1[m] - Knm * Pn2[m]
-            
-            dPn2dth[m] = dPn1dth[m]
-            dPn1dth[m] = dPnmdth
-            Pn2[m] = Pn1[m]
-            Pn1[m] = Pnm
-            
-            if (m == 0):
-                cosmph = 1
-                sinmph = 0
-            else:
-                # use np.matmul(a,b)
-                a = np.array([[cosmph, -1*sinmph],[sinmph, cosmph]])
-                b = np.array([cosph, sinph])
-                #C = [cosmph -sinmph sinmph cosmph]*[cosph sinph]'
-                C = np.matmul(a,b)
-                cosmph=C[0]
-                sinmph=C[1]
-            g = Snm*gnm[n-1][m]
-            h = Snm*hnm[n-1][m]
-            
-            Br=Br+A*(n+1)*(g*cosmph+h*sinmph)*Pnm
-            Bth=Bth-A*(g*cosmph+h*sinmph)*dPnmdth
-            Bph=Bph-A/(sinth)*m*(-1*g*sinmph+h*cosmph)*Pnm
-    
-    B = [Br, Bth, Bph]
-    return B
+#     B = [Br, Bth, Bph]
+#     return B
 
 def Tq(q):
     w = q[0]
@@ -391,6 +481,7 @@ class sim_listen:
         self.ti = 0
         self.t = 0
         self.tf = 600 # 3600
+        # self.tf = 100
         # self.tf = 100*60*2
         self.dt = 1
         
@@ -410,7 +501,8 @@ class sim_listen:
         self.satellite = Satrec.twoline2rv(line1, line2)
         self.tsince = (self.t0 - self.satellite.jdsatepoch - 
         self.satellite.jdsatepochF)*24*60 + self.t/60
-        
+        print("current time:", self.t)
+        print("date from tester", self.satellite.jdsatepoch + self.satellite.jdsatepochF)
         e, r, v = self.satellite.sgp4_tsince(self.tsince)
 
         self.r = np.array(r) * 1e3
@@ -437,6 +529,7 @@ class sim_listen:
         gmst = tc.ymdhms_2_gmst(self.se[0],self.se[1],self.se[2],self.se[3],
                                  self.se[4],self.se[5],self.t/(3600*24))
         
+        print("tester - GMST is", gmst, " for time", self.t)
         Tef = np.array([[cos(gmst), sin(gmst), 0], 
                         [-1*sin(gmst), cos(gmst), 0], 
                         [0, 0, 1]])
@@ -447,8 +540,9 @@ class sim_listen:
         lon = np.arctan2(Recef[1],Recef[0])
         r_nrm = la.norm(Recef)
         Rlr = np.array([lat, lon, r_nrm])
-        b = mag2(Rlr,[self.se[0],self.se[1],self.se[2],self.se[3],
-                                 self.se[4],self.se[5] + self.t],13)
+        # b = mag2(Rlr,[self.se[0],self.se[1],self.se[2],self.se[3],
+        #                          self.se[4],self.se[5] + self.t],13)
+        b = mag2(Rlr, self.t/(24*3600) + self.t0, 13)
         b = b * np.array([1e-9])
             
         clt = pi/2-lat
@@ -499,7 +593,7 @@ class sim_listen:
         # print("adcsM = " + str(self.adcsM))
         props[4] = self.se
         props[5] = self.b
-        print("ode45 for propogate")
+        # print("ode45 for propogate")
         x_solved = rk_ode.ode45(7, y0, t_span[0], t_span[1], eps, dt, dt_min, SatDE, props)
         # x_solved = solve_ivp(SatDE, t_span, y0)
         # X[i+1,:] = x_solved.y[:,-1]
@@ -532,8 +626,8 @@ class sim_listen:
         [Tdes, rando] = Td(self.r,self.v)
         
         gmst = tc.ymdhms_2_gmst(self.se[0],self.se[1],self.se[2],self.se[3],
-                                 self.se[4],self.se[5], (self.t-dt)/(3600*24))
-    
+                                 self.se[4],self.se[5], (self.t)/(3600*24))
+        print("tester - GMST is", gmst, " for time", self.t)
         # %Time (GMST)
         # GMST = ymdhms2GMST(Sim.se(1),Sim.se(2),Sim.se(3),Sim.se(4),Sim.se(5),Sim.se(6),t(i+1)/(3600*24))
         
@@ -546,10 +640,13 @@ class sim_listen:
         lon = np.arctan2(Recef[1],Recef[0])
         r_nrm = la.norm(Recef)
         Rlr = np.array([lat, lon, r_nrm])
-        b = mag2(Rlr,[self.se[0],self.se[1],self.se[2],self.se[3],
-                                 self.se[4],self.se[5] + self.t],13)
+        # b = mag2(Rlr,[self.se[0],self.se[1],self.se[2],self.se[3],
+        #                          self.se[4],self.se[5] + self.t],13)
+        b = mag2(Rlr, self.t/(24*3600) + self.t0, 13)
+        print("self.t is", self.se[5] + self.t)
         #print(mag2(Rlr,[se[0],se[1],se[2],se[3],se[4],se[5] + t[0]],13))
         b = b * np.array([1e-9])
+        
             
         clt = pi/2 - lat
         Tus = [[cos(lon)*sin(clt), sin(lon)*sin(clt),  cos(clt)], 
@@ -589,6 +686,7 @@ ang_err = B * 1
 th_err = B * 1
 ang_des = B * 1
 att_des = np.zeros((1,4))
+cov = np.zeros((1,6))
 Td_ang_vel = ang_des * 1
 Td_ang_val = att_des * 1
 
@@ -601,7 +699,7 @@ vel[0] = example.v
 # M[0] = example.sim_adcs.adcsM
 X[0] = example.x # readgyro1 and readgyro2
 # sat.data.gyro1_meas and gyro2_meas
-wxB[0] = np.cross(X[0,0:3], B[0]) 
+wxB[0] = np.cross(X[0,0:3], B[0])
 
 i = 0
 
@@ -632,6 +730,8 @@ while (example.t <= example.tf):
     att_des = np.append(att_des, np.array([adcs_sys.state_machine.data.q_des]), axis = 0)
 
     Td_ang_vel = np.append(Td_ang_vel, np.array([calc4]), axis = 0)
+    cov = np.append(cov, np.array([np.diagonal(adcs_sys.state_machine.data.ekf_data.P)]), axis = 0)
+    print(np.diagonal(adcs_sys.state_machine.data.ekf_data.P))
     # Td_ang_des = np.append(Td_ang_des, np.array([calc4]), axis = 0)
 
     adcs_sys.state_machine.sensors.time = example.t
@@ -643,7 +743,7 @@ while (example.t <= example.tf):
     adcs_sys.state_machine.data.gps_r = example.r
     adcs_sys.state_machine.data.gps_v = example.v
 
-    print("----------", calc4)
+    print("---------- desired ", calc4)
     print("----------", adcs_sys.state_machine.data.ang_vel_des)
     print("----------", example.r)
     print("----------", example.v)
@@ -664,29 +764,32 @@ plots = [B, Bdot, pos, vel, M, X, wxB]
 plot_titles = ["B", "Bdot", "pos", "vel", "M", "X", "wxB"]
 
 c = 0
-
-for i in range(0,3):
-    plt.figure(i)
+plt.figure(c)
+legend = []
+for i in range(0,3): 
     plt.plot(time, X[:,i])
     plt.plot(time, ang_des[:,i])
     plt.plot(time, Td_ang_vel[:,i])
     plt.title("Angular Velocity")
     plt.xlabel("time (sec)")
     plt.ylabel("Angular Velocity (rad/sec)")
-    plt.legend(["omega_" + str(i + 1), "omega_des_data_" + str(i + 1), "omega_des_calc_" + str(i + 1)])
+    legend = legend + ["omega_" + str(i + 1), "omega_des_data_" + str(i + 1), "omega_des_calc_" + str(i + 1)]
+plt.legend(legend)
     
-c += 3
+c += 1
 
+plt.figure(c)
+legend = []
 for i in range(0,3):
-    plt.figure(i+c)
     plt.plot(time, ang_des[:,i])
     plt.plot(time, Td_ang_vel[:,i])
     plt.title("Angular Velocity")
     plt.xlabel("time (sec)")
     plt.ylabel("Angular Velocity (rad/sec)")
-    plt.legend(["omega_" + str(i + 1), "omega_des_data_" + str(i + 1), "omega_des_calc_" + str(i + 1)])
+    legend = legend + ["omega_" + str(i + 1), "omega_des_data_" + str(i + 1), "omega_des_calc_" + str(i + 1)]
+plt.legend(legend)
 
-c += 3
+c += 1
 # for i in range(0,4):
 #     plt.figure(i+c)
 #     plt.plot(time, X[:,i+c])
@@ -695,33 +798,56 @@ c += 3
 #     plt.ylabel("Parameter")
 
 # c += 4
-    
+
+plt.figure(c)
 for i in range(0,3):
-    plt.figure(i+c)
     plt.plot(time, M[:,i])
     plt.title("Control Applied (" + str(i + 1) + ")")
     plt.xlabel("time (sec)")
     plt.ylabel("Magnetic Dipole Moment [A*m^2]")
+plt.legend(["1","2","3"])
 
-c += 3
-
+c += 1
 plt.figure(c)
 for i in range(0,3):
     plt.plot(time, ang_err[:,i])
 plt.title("ang_vel_err (" + str(i + 1) + ")")
 plt.xlabel("time (sec)")
 plt.ylabel("ang_vel (rad/sec)")
+plt.legend(["1","2","3"])
 
 c += 1
-
 plt.figure(c)
 for i in range(0,3):
     plt.plot(time, th_err[:,i])
 plt.title("th_err (" + str(i + 1) + ")")
 plt.xlabel("time (sec)")
 plt.ylabel("th (rad/sec)")
+plt.legend(["1","2","3"])
+
+# c += 1
+# plt.figure(c)
+# for i in range(0,3):
+#     plt.plot(time, cov[:,i])
+# plt.legend(["1","2","3"])
 
 c += 1
+plt.figure(c)
+for i in range(0,3):
+    plt.plot(time, cov[:,i])
+plt.title("Covariance (ang_vel) vs Time")
+plt.xlabel("Time [sec]")
+plt.legend(["1","2","3"])
+
+
+c += 1
+plt.figure(c)
+for i in range(3,6):
+    plt.plot(time, cov[:,i])
+plt.title("Covariance (mag) vs Time")
+plt.xlabel("Time [sec]")
+plt.legend(["4","5","6"])
+
 
 # for i in range(0,3):
 #     plt.figure(i+c)

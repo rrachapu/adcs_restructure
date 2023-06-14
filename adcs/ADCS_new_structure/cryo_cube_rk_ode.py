@@ -101,7 +101,6 @@ def rk45(numelm, x, dxdt, t, dt, foo, props) :
     return [y, y_err]
 
 def stepper45(numel, x, dxdt, t, dt_try, eps, x_scale, foo, props):
-    #print("stepper45")
     
     # numel: the number elements in vector
     # x: current x values
@@ -147,10 +146,6 @@ def stepper45(numel, x, dxdt, t, dt_try, eps, x_scale, foo, props):
         errmax = 0.0
         for i in range(0, numel):
             if ((x_err[i]) > errmax):
-                # if (m > 40):
-                     # print("-----error")
-                     # print(x_err[i])
-                     # print(dt)
                 errmax = (x_err[i])
         errmax /= eps
 
@@ -159,16 +154,13 @@ def stepper45(numel, x, dxdt, t, dt_try, eps, x_scale, foo, props):
         if (errmax <= 1.0):
             t = t + dt
             x = x_temp * 1
-            # print("entered 2")
             dt_act = dt
             if (errmax > 6e-4) and (m <= num_runs):
                 dt_next = 0.9*dt*np.exp(-0.20*np.log(errmax))
-                # print("entered 3")
             else:
                 dt_next = 4.0*dt
                 if (m > num_runs):
                     print(".....error: " + str(np.max(x_err)))
-                # print("entered 4")
                 break
 		
         dt = 0.9*dt*np.exp(-0.25*np.log(errmax))
@@ -176,7 +168,6 @@ def stepper45(numel, x, dxdt, t, dt_try, eps, x_scale, foo, props):
     return [x, dt_act, dt_next, t]
 
 def ode45(numel, x_start, t1, t2, eps, dt1, dt_min, fun, props):
-    #print("ode45")
     t, dt_next, dt_act, dt = 0,0,0,0
 
     x_scale = np.zeros(numel)

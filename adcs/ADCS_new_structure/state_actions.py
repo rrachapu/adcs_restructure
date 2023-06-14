@@ -4,7 +4,6 @@ import cryo_cube_CT_translated as ct
 
 # NOTE: each time "sat" is passed, it refers to a state_machine object
 
-
 ## NEW STRUCTURE CHANGES:
 # replace "sat.sensors.get_time" with "sat.sensors.get_time"
 # replace "sat.actuators.set_magnetorquers()" with "sat.actuators.set_magnetorquers"
@@ -136,6 +135,7 @@ def nominal_estimator(sat):
 
     sat.data.ekf_data.ang_vel_meas1 = sat.data.gyro1_meas
     sat.data.ekf_data.ang_vel_meas2 = sat.data.gyro2_meas
+
     sat.data.ekf_data.mag_meas_1.data[sat.data.ekf_data.mag_meas_1.iterator] = sat.data.mag1_meas.data[sat.data.mag1_meas.iterator]
     sat.data.ekf_data.mag_meas_2.data[sat.data.ekf_data.mag_meas_2.iterator]  = sat.data.mag2_meas.data[sat.data.mag2_meas.iterator]
 
@@ -149,7 +149,7 @@ def nominal_estimator(sat):
 
 def ekf_start_est2(sat):
     differentiateB(sat)
-    sat.data.ekf_data.M = np.array([0,0,0])
+    turn_off_magnetotorquers(sat)
     nominal_estimator(sat)
 
     # TODO: error handling
@@ -158,13 +158,13 @@ def nominal_guidance(sat):
     sat.data.q_des = sat.guidance.T_des()
     position = sat.data.gps_r
     velocity = sat.data.gps_v
-    print("nominal guidance print")
-    print(sat.data.M_moment_out)
-    print(sat.data.ekf_data.M)
-    print("nominal guidance print")
+    # print("nominal guidance print")
+    # print(sat.data.M_moment_out)
+    # print(sat.data.ekf_data.M)
+    # print("nominal guidance print")
     (a,sat.data.ang_vel_des) = ct.T_dart(position, velocity)
-    print("ang_vel_des is ")
-    print(sat.data.ang_vel_des)
+    # print("ang_vel_des is ")
+    # print(sat.data.ang_vel_des)
 
 
 
@@ -182,21 +182,25 @@ def torque2control(sat):
 
 def nominal_calculate_control(sat):
     # calculate quaternion error
-    q0_err = (sat.data.ekf_data.q[0] * sat.data.q_des[0]) + np.dot(sat.data.ekf_data.q[1:], sat.data.q_des[1:])
-    state_err = np.zeros(6)
-    state_err[3:] = np.cross(sat.data.ekf_data.q[1:], sat.data.q_des[1:])
 
-    state_err[3:] = state_err[3:] + sat.data.q_des[0]*sat.data.ekf_data.q[1:] - sat.data.ekf_data.q[0]*sat.data.q_des[1:]
+    ################################### - is this section of code necessary past debugging?
+    # q0_err = (sat.data.ekf_data.q[0] * sat.data.q_des[0]) + np.dot(sat.data.ekf_data.q[1:], sat.data.q_des[1:])
+    # state_err = np.zeros(6)
+    # state_err[3:] = np.cross(sat.data.ekf_data.q[1:], sat.data.q_des[1:])
 
-    if (q0_err < 0):
-        q0_err = -1*q0_err
-        state_err[3:] = state_err[3:] * -1
-    print("hello hello")
-    print(np.shape(sat.data.ekf_data.ang_vel))
-    print(type(sat.data.ang_vel_des))
-    print(sat.data.ang_vel_des)
+    # state_err[3:] = state_err[3:] + sat.data.q_des[0]*sat.data.ekf_data.q[1:] - sat.data.ekf_data.q[0]*sat.data.q_des[1:]
 
-    state_err[0:3] = sat.data.ekf_data.ang_vel[0:] - np.array(sat.data.ang_vel_des[0:])
+    # if (q0_err < 0):
+    #     q0_err = -1*q0_err
+    #     state_err[3:] = state_err[3:] * -1
+    # print("hello hello")
+    # print(np.shape(sat.data.ekf_data.ang_vel))
+    # print(type(sat.data.ang_vel_des))
+    # print(sat.data.ang_vel_des)
+
+    # state_err[0:3] = sat.data.ekf_data.ang_vel[0:] - np.array(sat.data.ang_vel_des[0:])
+
+    ###################################
 
     sat.control.mode = sat.control.PRIMARY_MODERN
 

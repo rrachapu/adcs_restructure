@@ -54,13 +54,13 @@ class control():
 
 
     def modern_controller(self, data, q_des : np.array, ang_vel_des : np.array, q_act : np.array, ang_vel_act : np.array):
-        print(self.mode)
+        # print(self.mode)
         if (self.mode == self.PRIMARY_MODERN):
-            print("using K_primary")
+            # print("using K_primary")
             gain = self.K_primary
         elif (self.mode == self.SECONDARY_MODERN):
             gain = self.K_secondary
-            print("using K_secondary")
+            # print("using K_secondary")
         elif (self.mode == self.FUZZY_CONTROLLER):
             gain = self.K_primary
         else:
@@ -75,7 +75,7 @@ class control():
             for j in range(0,3):
                 ang_acc_des[i] += ( (gain[i,j])*(ang_vel_err[j]) + (gain[i,j+3])*(th_err[j]) )
 
-        print("moment of inertia is :", data.ekf_data.I)
+        # print("moment of inertia is :", data.ekf_data.I)
         print("ang_acc_des is : ", ang_acc_des)
         torque_des = np.matmul(data.ekf_data.I, ang_acc_des)
         return self.torque2control(torque_des, data)
@@ -87,16 +87,11 @@ class control():
         m_hat = np.cross(b_hat, t_hat)
         moment = m*m_hat
 
-        print("max moment out is : ", data.max_M_moment_out)
-
         # saturation step
         if (np.any(np.absolute(moment) > data.max_M_moment_out)):
             temp_m = data.max_M_moment_out * np.sign(moment) * (np.absolute(moment) > data.max_M_moment_out)
             moment = temp_m + moment*(np.absolute(moment) < data.max_M_moment_out)
 
-        print("b meas is ", data.mag1_meas.data[data.mag1_meas.iterator])
-        print('torque_des is :', torque_des)
-        print("moment is : ", moment)
         data.M_moment_out = moment
         return moment
     
@@ -112,7 +107,6 @@ class control():
         return sat.data
 
     def bdot_calculate_control(self, sat):
-        print("bdot: " + str(sat.data.bdot_est))
         if ((sat.data.bdot_est[0] < self.BDOT_ESTIMATE_INF) and (sat.data.bdot_est[1] < self.BDOT_ESTIMATE_INF)
             and (sat.data.bdot_est[2] < self.BDOT_ESTIMATE_INF)):
             B = np.linalg.norm(sat.data.mag1_meas.data[sat.data.mag1_meas.iterator])
