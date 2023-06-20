@@ -6,7 +6,7 @@ from sensors import sensors
 from actuators import actuators
 from guidance import guidance
 from control import control
-from estimator import estimator
+# from estimator import estimator
 from ekf_commands import ekf_commands
 
 
@@ -67,3 +67,6 @@ class state_machine():
             # g_SafeMode.set = true;
             # g_ccADCSinfo.state = transSafe1(&g_ccADCSinfo, g_ADCSdelay);
             # break;
+
+    def current_mode(self):
+        state_num = self.data.state

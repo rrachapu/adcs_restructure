@@ -91,6 +91,7 @@ class ekf_commands():
         self.I = data.I
 
     def diffEqInit(self, t, x, data: tp.ekf_data_t):
+        # should change x
         # timer command
 
         self.ww = x[:3]
@@ -121,6 +122,7 @@ class ekf_commands():
         # calculate ang vel of body wrt ref frame in body fixed coordinate system
         self.wbrb = self.ww - self.wbrb
         print("(diffEQInit) - angular velocity: ", self.wbrb)
+        return x
 
     def diffEqTorques(self, data: tp.ekf_data_t):
         # represents control torque
@@ -275,7 +277,7 @@ class ekf_commands():
 
 
         self.wxIw = np.cross(self.Iw, self.ww)
-        self.wxIx = self.TT + self.wxIw
+        self.wxIw = self.TT + self.wxIw
         dX[0:3] = np.matmul(self.Ii,self.wxIw)
         
         for i in range(0,6):

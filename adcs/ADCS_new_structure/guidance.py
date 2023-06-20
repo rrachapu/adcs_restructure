@@ -1,4 +1,5 @@
 import numpy as np
+import cryo_cube_CT_translated as ct
 
 class guidance():
     
@@ -14,6 +15,9 @@ class guidance():
         mode = 0
         if (mode == 0):
             return np.array([1,0,0,0])
+    
+    def T_dart(self, position, velocity):
+        return ct.T_dart(position, velocity)
 
 
     
